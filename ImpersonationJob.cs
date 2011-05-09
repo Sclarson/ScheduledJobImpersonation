@@ -23,6 +23,7 @@ namespace BlendInteractive.CustomUserJob
         /// </summary>
         public virtual string Domain { get { return "domain"; } }
 
+
         public override string Execute()
         {
             
@@ -65,9 +66,9 @@ namespace BlendInteractive.CustomUserJob
             impersonationContext.Undo();
         }
 
-        // Impersonation Logic here
-        public const int LOGON32_LOGON_INTERACTIVE = 2;
-        public const int LOGON32_PROVIDER_DEFAULT = 0;
+        protected virtual LogonType UserLogonType { get { return LogonType.Logon32LogonNetwork; } }
+
+        protected virtual LogonProvider UserLogonProvider { get { return LogonProvider.Logon32ProviderDefault; } }
 
         private WindowsImpersonationContext impersonationContext;
         [DllImport("advapi32.dll")]
@@ -96,8 +97,8 @@ namespace BlendInteractive.CustomUserJob
 
             if (RevertToSelf())
             {
-                if (LogonUserA(userName, domain, password, LOGON32_LOGON_INTERACTIVE,
-                    LOGON32_PROVIDER_DEFAULT, ref token) != 0)
+                if (LogonUserA(userName, domain, password, (int) UserLogonType,
+                    (int) UserLogonProvider, ref token) != 0)
                 {
                     if (DuplicateToken(token, 2, ref tokenDuplicate) != 0)
                     {
@@ -118,5 +119,24 @@ namespace BlendInteractive.CustomUserJob
                 CloseHandle(tokenDuplicate);
             return false;
         }
+
+        public enum LogonType : int
+        {
+            Logon32LogonInteractive = 2,
+            Logon32LogonNetwork = 3,
+            Logon32LogonBatch = 4,
+            Logon32LogonService = 5,
+            Logon32LogonUnlock = 7,
+            Logon32LogonNetworkCleartext = 8,
+            Logon32LogonNewCredentials = 9
+        };
+
+        public enum LogonProvider : int
+        {
+            Logon32ProviderDefault = 0,
+            Logon32ProviderWinnt35 = 1,
+            Logon32ProviderWinnt40 = 2,
+            Logon32ProviderWinnt50 = 3
+        };
     }
 }
