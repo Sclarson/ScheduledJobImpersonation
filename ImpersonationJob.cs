@@ -2,51 +2,62 @@
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 using EPiServer.BaseLibrary.Scheduling;
-using EPiServer.PlugIn;
 
 namespace BlendInteractive.CustomUserJob
 {
-    [ScheduledPlugIn(DisplayName = "Impersonating Scheduled Job", Description = "A plugin to demonstrate changing the current user while a process runs", SortIndex = 1)]
     public class ImpersonationJob : JobBase
     {
-        public ImpersonationJob()
-        {
-            //Oh noes virtuals in a constructor remove this later
-            Username = "WorkerMonkey";
-            Password = "12345";
-            Domain = "";
-        }
 
-        public virtual string Username { get; set; }
-        public virtual string Password { get; set; }
-        public virtual string Domain { get; set; }
+        /// <summary>
+        /// Username of the user you wish to impersonate
+        /// </summary>
+        public virtual string Username { get { return "username";  } }
+
+        /// <summary>
+        /// Password of the user you wish to impersonate
+        /// </summary>
+        public virtual string Password { get { return "password"; } }
+
+        /// <summary>
+        /// Domain of the user you wish to impersonate
+        /// </summary>
+        public virtual string Domain { get { return "domain"; } }
 
         public override string Execute()
         {
-            string starterName = WindowsIdentity.GetCurrent().Name;
-            string endingName, midpointName;
-            this.OnStatusChanged(starterName);
-
-
+            
             if (ImpersonateValidUser(Username, Domain, Password)) // amazing its the same combination as my luggage!
             {
-                //Stuff you want to do as the impersonated user goes here
-                midpointName = WindowsIdentity.GetCurrent().Name;
-                this.OnStatusChanged(midpointName);
-
-                
-                //Undo your impersonation.  We don't need that power anymore
+                string message = ExecuteSuccessfulImpersonation();
                 UndoImpersonation();
-                endingName = WindowsIdentity.GetCurrent().Name;
-                this.OnStatusChanged(endingName);
-                
-                
-                return "Starting Name: " + starterName + " Midpoint Name: " + midpointName + " Ending Name:" +
-                       endingName;
+                return message;
             }
-            
-            // Some sort of failsafe code here to alert is things went wack
-            return "F-F-F-F-Failure";
+
+            return ExecuteFailedImpersonation();
+        }
+
+        /// <summary>
+        /// Function which is called if Impersonation succeeds.  Override and fill with logic you want to execute as the impersonating user.
+        /// </summary>
+        /// <returns></returns>
+        protected virtual string ExecuteSuccessfulImpersonation()
+        {
+            var windowsIdentity = WindowsIdentity.GetCurrent();
+            if (windowsIdentity != null)
+            {
+                return "Successfully impersonated" + windowsIdentity.Name;
+            }
+
+            return "ImpersonateValidUser was true but WindowsIdentity.GetCurrent() returned null";
+        }
+
+        /// <summary>
+        /// Fucntionwhich is called if Impersonation fails.  Override and fill with logic you want to execute if impersonation fails.
+        /// </summary>
+        /// <returns></returns>
+        protected virtual string ExecuteFailedImpersonation()
+        {
+            return "Failed Impersonation";
         }
 
         protected virtual void UndoImpersonation()
@@ -54,7 +65,7 @@ namespace BlendInteractive.CustomUserJob
             impersonationContext.Undo();
         }
 
-        // Nasty starts here
+        // Impersonation Logic here
         public const int LOGON32_LOGON_INTERACTIVE = 2;
         public const int LOGON32_PROVIDER_DEFAULT = 0;
 
